@@ -1,0 +1,10 @@
+{
+  "Users": [
+    {
+      "name": "John Doe",
+      "phone": 123987465,
+      "email": "john@gmail.com",
+      "active": true
+    }
+  ]
+}
