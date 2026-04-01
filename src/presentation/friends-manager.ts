@@ -1,41 +1,73 @@
 import { numberValidator } from "../core/validators/number.validator.js";
 import { openInteractionManager, type Choice } from "./interaction-manager.js";
+import { FriendsController } from '../controller/friends.controller.js';
+import type { iFriend } from "../models/friend.model.js";
+import emailValidator from "../core/validators/email.validator.js";
+import phoneValidator from "../core/validators/phone.validator.js";
 
 const options: Choice[] = [
-  { label: "Add Friend", value: "1" },
+  { label: "Add Friend",    value: "1" },
   { label: "Search Friend", value: "2" },
   { label: "Update Friend", value: "3" },
   { label: "Remove Friend", value: "4" },
-  { label: "Exit", value: "5" },
+  { label: "Exit",          value: "5" },
 ];
+
+const searchOptions: Choice[] = [
+    {label: "By Email",        value: "1"},
+    {label: "By Phone Number", value: "2"}
+]
 
 const {ask,choose,close} = openInteractionManager();
 
-const addFriend = async ()=>{
-    const name = await ask('Enter freind name:');
-    const email = await ask('Enter friend email');
-    const phone = await ask('Enter friend phone number');
-    const openingBalance = await ask('Enter opening balance (positive mean they owe you,negative means you owe them)',{validator:numberValidator});
+const friendsController = new FriendsController();
 
-    const friend = {
+const addFriendInterface = async () => {
+    const newName = await ask('Enter friend name: ');
+    const newEmail = await ask('Enter friend email: ', {validator: emailValidator});
+    const newPhone = await ask('Enter friend phone number: ', {validator: phoneValidator});
+    const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
+
+    const friend:iFriend = {
         id: Date.now().toString(),
-        name,
-        email,
-        phone,
-        balance:Number(openingBalance)
+        name: newName!,
+        email: newEmail!,
+        phone: newPhone!,
+        balance: Number(openingBalance),
+        isActive: true
     }
+
+    friendsController.addFriendReferenceToRepository(friend);
 }
 
-export const manageFriends = async ()=>{
-    while(true){
-        const choice = await choose('What do you want to do?',options,false);
+const searchFriendInterface = async (choice: "1" | "2") => {
+    let friend: iFriend | undefined;
+    if(choice === "1") {
+        const email = await ask('Enter email to search: ');
+        if(email) {
+            friend = friendsController.checkEmailExists(email) ? 
+        }
+    } else if(choice === "2") {
+        const phone = await ask('Enter phone number to search: ');
+    }
+    friendsController
+}
+
+export const manageFriends = async () => {
+    while(true) {
+        const choice = await choose('What do you want to do?', options, false);
 
         switch(choice!.value){
-            case '1':
-                console.log('Adding friend...');
+            case '1': {
+                await addFriendInterface();
                 break;
+            }
             case '2':
-                console.log('Searchiing friend...');
+                const searchChoice = await choose("How do you want to search", searchOptions, false);
+                if(searchChoice?.value === "1" || searchChoice?.value ===  "2") {
+                    await searchFriendInterface(searchChoice);
+                }
+                console.log("Invalid input")
                 break;
             case '3':
                 console.log('Updating friend...');

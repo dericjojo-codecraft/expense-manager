@@ -4,4 +4,5 @@ export interface iFriend {
   email: string;
   phone: string;
   balance: number;
+  isActive: boolean;
 }
