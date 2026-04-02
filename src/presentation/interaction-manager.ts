@@ -14,17 +14,17 @@ export interface Choice {
 export const openInteractionManager = () => {
   const rl = readline.createInterface({ input, output });
 
-  const ask:(question: string, options?: AskOptions) => Promise<string|undefined> = async (question: string, options?: AskOptions) => {
+  const ask: (question: string, options?: AskOptions) => Promise<string | undefined> = async (question: string, options?: AskOptions) => {
     const { defaultAnswer, validator } = options || {};
     return new Promise((resolve) => {
       rl.question(
         question + `${defaultAnswer ? "(" + defaultAnswer + ")" : ""}`,
-        (answer: string) => {
+        async (answer: string) => {
           if (validator && !validator(answer)) {
-            console.log("Invalid");
             resolve(ask(question, { defaultAnswer, validator }));
+          } else {
+            resolve(answer || defaultAnswer);
           }
-          resolve(answer || defaultAnswer);
         },
       );
     });
@@ -47,7 +47,7 @@ export const openInteractionManager = () => {
 
   const close = () => {
     rl.close();
-  }
+  };
 
-  return { ask, choose, close }
+  return { ask, choose, close };
 };

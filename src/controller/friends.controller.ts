@@ -1,29 +1,42 @@
 import type { iFriend } from "../models/friend.model.js";
 import { FriendRepository } from "../repositories/friends.repository.js";
-import emailValidator from '../core/validators/email.validator.js'
-import phoneValidator from "../core/validators/phone.validator.js";
 import displayTable from "../core/page-option.js";
 
 export class FriendsController{
-    checkEmailExists(email:string) {
-        return emailValidator(email);
-    }
-
-    checkPhoneExists(phone:string) {
-        return phoneValidator(phone);
-    }
-
-    addFriendReferenceToRepository(friend:iFriend) {
-        if(!FriendRepository.getInstance()) {
-            return { success: false };
-        }
-        console.log('Adding friend to database...', friend);
-        FriendRepository.getInstance().addFriendToRepository(friend);
-    }
-
-    async searchFriendReferenceToRepository(value: string) {
+    async checkEmailExists(email:string) {
         const repo = FriendRepository.getInstance();
-        const response = repo.findFriends(value)
-        await displayTable((await response).data)
+        return await repo.checkEmailInRepository(email);
+    }
+
+    async checkPhoneExists(phone:string) {
+        const repo = FriendRepository.getInstance();
+        return await repo.checkPhoneInRepository(phone);
+    }
+
+    async addFriendReferenceToRepository(friend: iFriend) {
+        const repo = FriendRepository.getInstance();
+        return await repo.addFriendToRepository(friend);
+    }
+
+    async searchFriendReferenceToRepository(value?: string) {
+        const repo = FriendRepository.getInstance();
+        if(value) {
+            const response = repo.findFriends(value);
+            displayTable((await response));
+        } else {
+            const response = repo.findFriends();
+            displayTable((await response));
+        }
+    }
+
+    async updateFriendInterface(value: string) {
+        const repo = FriendRepository.getInstance();
+        repo.updateFriend(value);
+        
+    }
+
+    async removeFriendReferenceToRepository(value: string) {
+        const repo = FriendRepository.getInstance();
+        return await repo.removeFriend(value);
     }
 }

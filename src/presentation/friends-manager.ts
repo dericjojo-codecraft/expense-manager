@@ -15,6 +15,12 @@ const options: Choice[] = [
 
 const searchOptions: Choice[] = [
     {label: "By Email",        value: "1"},
+    {label: "By Phone Number", value: "2"},
+    {label: "Show all",        value: "3"}
+]
+
+const removeOrUpdateOptions: Choice[] = [
+    {label: "By Email",        value: "1"},
     {label: "By Phone Number", value: "2"}
 ]
 
@@ -37,45 +43,120 @@ const addFriendInterface = async () => {
         isActive: true
     }
 
-    friendsController.addFriendReferenceToRepository(friend);
+    const result = await friendsController.addFriendReferenceToRepository(friend);
+    console.log(`Presentation: ${result.message}`);
 }
 
-const searchFriendInterface = async (choice: "1" | "2") => {
+const searchFriendInterface = async (choice: "1" | "2" | "3") => {
     if(choice === "1") {
         const email = await ask('Enter email to search: ');
-        if(email && friendsController.checkEmailExists(email))  {
+        if(email && await friendsController.checkEmailExists(email))  {
                 await friendsController.searchFriendReferenceToRepository(email)
         } else {
-             console.log("Email not valid.");
+             console.log("Presentation: Email not valid.");
         }
     } else if(choice === "2") {
         const phone = await ask('Enter phone number to search: ');
-        if(phone && friendsController.checkPhoneExists(phone)) {
+        if(phone && await friendsController.checkPhoneExists(phone)) {
             await friendsController.searchFriendReferenceToRepository(phone)
         } else {
              console.log("Phone number not valid.");
         }
+    } else if(choice === "3") {
+        await friendsController.searchFriendReferenceToRepository();
+    }
+}
+
+const updateFriendInterface = async (choice: "1" | "2") => {
+    const newName = await ask('Enter friend name: ');
+    const newEmail = await ask('Enter friend email: ', {validator: emailValidator});
+    const newPhone = await ask('Enter friend phone number: ', {validator: phoneValidator});
+    const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
+
+    const friend:iFriend = {
+        id: Date.now().toString(),
+        name: newName!,
+        email: newEmail!,
+        phone: newPhone!,
+        balance: Number(openingBalance),
+        isActive: true
+    }
+
+    if(choice === "1") {
+        const email = await ask('Enter email to remove: ');
+        if(email && await friendsController.checkEmailExists(email))  {
+                await friendsController.updateFriendInterface(email)
+        } else {
+             console.log("Presentation: Email not valid.");
+        }
+    } else if(choice === "2") {
+        const phone = await ask('Enter phone number to remove: ');
+        if(phone && await friendsController.checkPhoneExists(phone)) {
+            await friendsController.updateFriendInterface(phone)
+        } else {
+             console.log("Presentation: Phone number not valid.");
+        }
+    }
+}
+
+const removeFriendInterface = async (choice: "1" | "2") => {
+    let result;
+    if(choice === "1") {
+        const email = await ask('Enter email to remove: ');
+        if(email && await friendsController.checkEmailExists(email))  {
+                result = await friendsController.removeFriendReferenceToRepository(email)
+        } else {
+             console.log("Presentation: Email not valid.");
+             return;
+        }
+    } else if(choice === "2") {
+        const phone = await ask('Enter phone number to remove: ');
+        if(phone && await friendsController.checkPhoneExists(phone)) {
+            result = await friendsController.removeFriendReferenceToRepository(phone)
+        } else {
+            console.log("Presentation: Phone number not valid.");
+            return;
+        }
+    }
+    
+    if(result) {
+        console.log(`Presentation: ${result.message}`);
     }
 }
 
 export const manageFriends = async () => {
     while(true) {
         const choice = await choose('\n\nWhat do you want to do?', options, false);
+        if (!choice) {
+            console.log("Presentation: Invalid selection. Please try again.");
+        }
 
         switch(choice!.value){
             case '1': {
                 await addFriendInterface();
                 break;
             }
-            case '2':
+            case '2': {
                 const searchChoice = await choose("How do you want to search", searchOptions, false);
-                if(searchChoice?.value === "1" || searchChoice?.value ===  "2") {
+                if(searchChoice?.value === "1" || searchChoice?.value ===  "2" || searchChoice?.value ===  "3") {
                     await searchFriendInterface(searchChoice.value);
-                } else { console.log("Invalid input") };
+                } else { console.log("Presentation: Invalid input") };
                 break;
-            case '3':
-                console.log('Updating friend...');
+            }
+            case '3': {
+                const updateChoice = await choose("How do you want to remove: ", removeOrUpdateOptions, false);
+                if(updateChoice?.value === "1" || updateChoice?.value ===  "2") {
+                    await updateFriendInterface(updateChoice.value);
+                } else { console.log("Presentation: Invalid input") };
                 break;
+            }
+            case '4': {
+                const removeChoice = await choose("How do you want to remove: ", removeOrUpdateOptions, false);
+                if(removeChoice?.value === "1" || removeChoice?.value ===  "2") {
+                    await removeFriendInterface(removeChoice.value);
+                } else { console.log("Presentation: Invalid input") };
+                break;
+            }
             case '5':
                 console.log('Exiting...');
                 close();
