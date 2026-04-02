@@ -41,21 +41,26 @@ const addFriendInterface = async () => {
 }
 
 const searchFriendInterface = async (choice: "1" | "2") => {
-    let friend: iFriend | undefined;
     if(choice === "1") {
         const email = await ask('Enter email to search: ');
-        if(email) {
-            friend = friendsController.checkEmailExists(email) ? 
+        if(email && friendsController.checkEmailExists(email))  {
+                await friendsController.searchFriendReferenceToRepository(email)
+        } else {
+             console.log("Email not valid.");
         }
     } else if(choice === "2") {
         const phone = await ask('Enter phone number to search: ');
+        if(phone && friendsController.checkPhoneExists(phone)) {
+            await friendsController.searchFriendReferenceToRepository(phone)
+        } else {
+             console.log("Phone number not valid.");
+        }
     }
-    friendsController
 }
 
 export const manageFriends = async () => {
     while(true) {
-        const choice = await choose('What do you want to do?', options, false);
+        const choice = await choose('\n\nWhat do you want to do?', options, false);
 
         switch(choice!.value){
             case '1': {
@@ -65,9 +70,8 @@ export const manageFriends = async () => {
             case '2':
                 const searchChoice = await choose("How do you want to search", searchOptions, false);
                 if(searchChoice?.value === "1" || searchChoice?.value ===  "2") {
-                    await searchFriendInterface(searchChoice);
-                }
-                console.log("Invalid input")
+                    await searchFriendInterface(searchChoice.value);
+                } else { console.log("Invalid input") };
                 break;
             case '3':
                 console.log('Updating friend...');
