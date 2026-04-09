@@ -35,7 +35,7 @@ const addFriendInterface = async () => {
     const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
 
     const friend:iFriend = {
-        id: Date.now().toString(),
+        id: Date.now(),
         name: newName!,
         email: newEmail!,
         phone: newPhone!,
@@ -74,7 +74,7 @@ const updateFriendInterface = async (choice: "1" | "2") => {
     const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
 
     const friend:iFriend = {
-        id: Date.now().toString(),
+        id: Date.now(),
         name: newName!,
         email: newEmail!,
         phone: newPhone!,

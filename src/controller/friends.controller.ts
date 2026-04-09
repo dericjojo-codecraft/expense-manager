@@ -21,18 +21,17 @@ export class FriendsController{
     async searchFriendReferenceToRepository(value?: string) {
         const repo = FriendRepository.getInstance();
         if(value) {
-            const response = repo.findFriends(value);
+            const response = repo.searchFriends(value);
             displayTable((await response));
         } else {
-            const response = repo.findFriends();
+            const response = repo.searchFriends();
             displayTable((await response));
         }
     }
 
     async updateFriendInterface(value: string) {
         const repo = FriendRepository.getInstance();
-        repo.updateFriend(value);
-        
+        //repo.updateFriend(value);
     }
 
     async removeFriendReferenceToRepository(value: string) {

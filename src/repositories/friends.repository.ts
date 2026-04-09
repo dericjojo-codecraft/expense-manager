@@ -1,130 +1,171 @@
 import type { PageOptions } from "../core/page-option.js";
 import type { iFriend } from "../models/friend.model.js";
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import sqlite3 from "sqlite3";
+import { open } from "sqlite";
 
-const FILE_PATH = join(process.cwd(), 'src/friendsList.json');
-const jsonData = await readFile(FILE_PATH, 'utf-8');
-const content = JSON.parse(jsonData);
+interface isFriendObjectActive {
+    id: number;
+    name: string;
+    isActive: number;
+    balance: number;
+}
+
+const db = await open({
+    filename: './database.sqlite',
+    driver: sqlite3.Database
+});
+
+await db.exec(`
+    CREATE TABLE IF NOT EXISTS friends (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE,
+        phone TEXT UNIQUE,
+        balance INTEGER,
+        isActive INTEGER NOT NULL DEFAULT 1
+    )
+`);
 
 export class FriendRepository {
     private static instance: FriendRepository;
-    private currentData = content;
+    private currentData = db;
 
     static getInstance() {
-        if(!FriendRepository.instance) {
+        if (!FriendRepository.instance) {
             FriendRepository.instance = new FriendRepository();
         }
         return FriendRepository.instance;
     }
 
-    private constructor() {}
+    private constructor() { }
 
     async checkEmailInRepository(email: string) {
-        if((this.currentData.friends as iFriend[]).some(friendObject => {
-            if(friendObject.isActive === true) {
-                return friendObject.email.toLowerCase() === email.toLowerCase();
-            }
-        })) {
-            return {success: false, message: "Action failed: Email must be unique"}
+        const existingFriend = await this.currentData.get(`SELECT id FROM friends WHERE LOWER(email) = LOWER(?) AND isActive = 1`, [email]);
+
+        if (existingFriend) {
+            return { success: false, message: "Action failed: Email must be unique" };
         }
+
+        return { success: true };
     }
 
     async checkPhoneInRepository(phone: string) {
-        if((this.currentData.friends as iFriend[]).some(friendObject => {
-            if(friendObject.isActive === true) {
-                return friendObject.phone === phone;
-            }
-        })) {
-            return {success: false, message: "Action failed: Phone number must be unique"}
+        const existingFriend = await this.currentData.get(`SELECT id FROM friends WHERE phone = ? AND isActive = 1`, [phone]);
+
+        if (existingFriend) {
+            return { success: false, message: "Action failed: Phone number must be unique" };
         }
+
+        return { success: true };
     }
 
     async addFriendToRepository(friend: iFriend): Promise<{ success: boolean; message: string }> {
-        const existingFriendIndex = (this.currentData.friends as iFriend[]).findIndex(friendObject => {
-            return friendObject.email === friend.email || friendObject.phone === friend.phone;
-        });
+        const existingFriend = await this.currentData.get<isFriendObjectActive>(
+            `SELECT id, isActive FROM friends WHERE email = ? OR phone = ?`,
+            [friend.email, friend.phone]
+        );
 
-        let message = "";
-        if (existingFriendIndex !== -1) {
-            if (this.currentData.friends[existingFriendIndex].isActive === false) {
-                this.currentData.friends[existingFriendIndex].isActive = true;
-                message = `Re-activated existing friend: ${friend.name}`;
+        if (existingFriend) {
+            if (existingFriend.isActive === 0) {
+                await this.currentData.run(`
+                    UPDATE friends SET isActive = 1, name = ?, balance = ? WHERE id = ?
+                `, [friend.name, friend.balance, existingFriend.id]);
+                return { success: true, message: `Re-activated existing friend: ${friend.name}` };
             } else {
                 return { success: false, message: "Action failed: Friend with same email or phone already exists" };
             }
+        }
+
+        await this.currentData.run(`
+            INSERT INTO friends (name, email, phone, balance) VALUES (?, ?, ?, ?)
+        `, [friend.name, friend.email, friend.phone, friend.balance]);
+
+        return { success: true, message: `Added friend to database: ${friend.name}` };
+    }
+
+    async updateFriend(value: string, friend: iFriend) {
+        const existingFriend = await this.currentData.get<isFriendObjectActive>(
+            `SELECT id, isActive FROM friends WHERE email = ? OR phone = ?`,
+            [value, value]
+        );
+
+        if (existingFriend && existingFriend.isActive) {
+            await this.currentData.run(`
+                UPDATE friends SET name = ?, email = ?, phone = ?, balance = ? WHERE id = ?
+            `, [friend.name, friend.email, friend.phone, friend.balance, existingFriend.id]);
+            return { success: true, message: "Friend updated successfully" };
         } else {
-            this.currentData.friends.push(friend);
-            message = `Added friend to database: ${friend.name}`;
+            return { success: false, message: "Action failed: Friend not found. No changes made." };
         }
-
-        await writeFile(FILE_PATH, JSON.stringify(this.currentData, null, 4), 'utf-8');
-        return { success: true, message };
-    }
-
-    async findFriends(value?: string) {
-        if(value){
-            return this.searchFriends(value);    
-        }
-        return this.searchFriends();
-    }
-
-    // TODO
-    async updateFriend(value: string) {
-        const friendObject = (this.currentData.friends as iFriend[])[await this.getSpecificFriendObject(value)];
     }
 
     async removeFriend(value: string): Promise<{ success: boolean; message: string }> {
-        const existingFriendIndex = await this.getSpecificFriendObject(value);
+        const existingFriend = await this.currentData.get<isFriendObjectActive>(
+            `SELECT id, isActive, balance, name FROM friends WHERE email = ? OR phone = ?`,
+            [value, value]
+        );
 
-        if (existingFriendIndex !== -1) {
-            if(this.currentData.friends[existingFriendIndex].balance !== 0) {
-                return { success: false, message: "Action failed: Balance needs to be settled before removing a friend."  }
+        if (existingFriend) {
+            if (existingFriend.isActive !== 0) {
+                if (existingFriend.balance !== 0) {
+                    return { success: false, message: "Action failed: Balance needs to be settled before removing a friend." };
+                }
+            } else {
+                return { success: false, message: "Action failed: Friend not found. No changes made." };
             }
 
-            const name = this.currentData.friends[existingFriendIndex].name;
-
-            this.currentData.friends[existingFriendIndex].isActive = false;
-
-            await writeFile(FILE_PATH, JSON.stringify(this.currentData, null, 4), 'utf-8');
-            return { success: true, message: `${name} removed as friend` };
-        }
-        return { success: false, message: "Action failed: Friend not found. No changes made" };
-    }
-
-    private async getSpecificFriendObject(value: string) {
-        const lowerValue = value.toLowerCase();
-
-        return (this.currentData.friends as iFriend[]).findIndex(friendObject => {
-            return (friendObject.email.toLowerCase() === lowerValue || friendObject.phone === lowerValue) && friendObject.isActive === true;
-        });
-    }
-
-    private async searchFriends(query?:string, pageOption?: PageOptions) {
-        let filtered: iFriend[];
-
-        if(query) {
-            const lowerQuery = query.toLowerCase();
-            filtered = (this.currentData.friends as iFriend[]).filter(friend => {
-                return (friend.name.toLowerCase().includes(lowerQuery) ||
-                friend.email.toLowerCase().includes(lowerQuery) ||
-                friend.phone.toLowerCase().includes(lowerQuery)) && friend.isActive === true;
-            });
+            await this.currentData.run(`
+                UPDATE friends SET isActive = ? WHERE id = ?
+            `, [0, existingFriend.id]);
+            return { success: true, message: `${existingFriend.name} removed as friend` };
         } else {
-            filtered = (this.currentData.friends as iFriend[]).filter(friend => {
-                return friend.isActive === true;
-            });
+            return { success: false, message: "Action failed: Friend not found. No changes made." };
         }
+    }
+
+    async searchFriends(query?: string, pageOption?: PageOptions) {
+        const limit = pageOption?.limit || 5;
+        const offset = pageOption?.offset || 0;
+
+        let friends: iFriend[] = [];
+        let matchedCount = 0;
+
+        if (query) {
+            const sqlQuery = `%${query}%`;
+
+            friends = await this.currentData.all(
+                `SELECT * FROM friends 
+                 WHERE (name LIKE ? OR email LIKE ? OR phone LIKE ?) AND isActive = 1
+                 LIMIT ? OFFSET ?`,
+                [sqlQuery, sqlQuery, sqlQuery, limit, offset]
+            );
+
+            const countResult = await this.currentData.get(
+                `SELECT COUNT(*) as count FROM friends 
+                 WHERE (name LIKE ? OR email LIKE ? OR phone LIKE ?) AND isActive = 1`,
+                [sqlQuery, sqlQuery, sqlQuery]
+            );
+            matchedCount = countResult.count;
+        } else {
+            friends = await this.currentData.all(
+                `SELECT * FROM friends WHERE isActive = 1 LIMIT ? OFFSET ?`,
+                [limit, offset]
+            );
+
+            const countResult = await this.currentData.get(
+                `SELECT COUNT(*) as count FROM friends WHERE isActive = 1`
+            );
+            matchedCount = countResult.count;
+        }
+
+        const totalResult = await this.currentData.get(
+            `SELECT COUNT(*) as count FROM friends WHERE isActive = 1`
+        );
 
         return {
-            data: filtered.slice((pageOption?.offset || 0),
-                (pageOption?.offset || 0) + (pageOption?.limit || 5)),
-            matched: filtered.length,
-            total: (this.currentData.friends as iFriend[]).reduce(
-                (acc, curr) => {
-                    if(curr.isActive === true) { acc += 1 }
-                    return acc;
-                }, 0)
-        }
+            data: friends,
+            matched: matchedCount,
+            total: totalResult.count
+        };
     }
 }
