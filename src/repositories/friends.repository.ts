@@ -26,7 +26,7 @@ export class FriendRepository {
                 return friendObject.email.toLowerCase() === email.toLowerCase();
             }
         })) {
-            return {success: false, message: "Email is not unique"}
+            return {success: false, message: "Action failed: Email must be unique"}
         }
     }
 
@@ -36,7 +36,7 @@ export class FriendRepository {
                 return friendObject.phone === phone;
             }
         })) {
-            return {success: false, message: "Phone number is not unique"}
+            return {success: false, message: "Action failed: Phone number must be unique"}
         }
     }
 
@@ -51,7 +51,7 @@ export class FriendRepository {
                 this.currentData.friends[existingFriendIndex].isActive = true;
                 message = `Re-activated existing friend: ${friend.name}`;
             } else {
-                return { success: false, message: "Friend with same email or phone already exists" };
+                return { success: false, message: "Action failed: Friend with same email or phone already exists" };
             }
         } else {
             this.currentData.friends.push(friend);
@@ -78,20 +78,25 @@ export class FriendRepository {
         const existingFriendIndex = await this.getSpecificFriendObject(value);
 
         if (existingFriendIndex !== -1) {
+            if(this.currentData.friends[existingFriendIndex].balance !== 0) {
+                return { success: false, message: "Action failed: Balance needs to be settled before removing a friend."  }
+            }
+
             const name = this.currentData.friends[existingFriendIndex].name;
-            
+
             this.currentData.friends[existingFriendIndex].isActive = false;
+
             await writeFile(FILE_PATH, JSON.stringify(this.currentData, null, 4), 'utf-8');
             return { success: true, message: `${name} removed as friend` };
         }
-        return { success: false, message: "Friend not found. No changes made" };
+        return { success: false, message: "Action failed: Friend not found. No changes made" };
     }
 
     private async getSpecificFriendObject(value: string) {
         const lowerValue = value.toLowerCase();
 
         return (this.currentData.friends as iFriend[]).findIndex(friendObject => {
-            return friendObject.email.toLowerCase() === lowerValue || friendObject.phone === lowerValue;
+            return (friendObject.email.toLowerCase() === lowerValue || friendObject.phone === lowerValue) && friendObject.isActive === true;
         });
     }
 

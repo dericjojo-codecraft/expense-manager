@@ -24,12 +24,12 @@ const removeOrUpdateOptions: Choice[] = [
     {label: "By Phone Number", value: "2"}
 ]
 
-const {ask,choose,close} = openInteractionManager();
+const {ask, choose, close} = openInteractionManager();
 
 const friendsController = new FriendsController();
 
 const addFriendInterface = async () => {
-    const newName = await ask('Enter friend name: ');
+    const newName = await ask('Enter friend name*: ');
     const newEmail = await ask('Enter friend email: ', {validator: emailValidator});
     const newPhone = await ask('Enter friend phone number: ', {validator: phoneValidator});
     const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
@@ -44,7 +44,7 @@ const addFriendInterface = async () => {
     }
 
     const result = await friendsController.addFriendReferenceToRepository(friend);
-    console.log(`Presentation: ${result.message}`);
+    console.log( result.message  );
 }
 
 const searchFriendInterface = async (choice: "1" | "2" | "3") => {
@@ -120,7 +120,7 @@ const removeFriendInterface = async (choice: "1" | "2") => {
     }
     
     if(result) {
-        console.log(`Presentation: ${result.message}`);
+        console.log( result.message  );
     }
 }
 
