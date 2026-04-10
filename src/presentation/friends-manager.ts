@@ -68,31 +68,44 @@ const searchFriendInterface = async (choice: "1" | "2" | "3") => {
 }
 
 const updateFriendInterface = async (choice: "1" | "2") => {
-    const newName = await ask('Enter friend name: ');
-    const newEmail = await ask('Enter friend email: ', {validator: emailValidator});
-    const newPhone = await ask('Enter friend phone number: ', {validator: phoneValidator});
-    const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ',{validator: numberValidator});
-
-    const friend:iFriend = {
-        id: Date.now(),
-        name: newName!,
-        email: newEmail!,
-        phone: newPhone!,
-        balance: Number(openingBalance),
-        isActive: true
-    }
-
+    
     if(choice === "1") {
         const email = await ask('Enter email to remove: ');
         if(email && await friendsController.checkEmailExists(email))  {
-                await friendsController.updateFriendInterface(email)
+            const newName = await ask('Enter friend name: ', {defaultAnswer: "need to keep same name"/**no change */});
+            const newPhone = await ask('Enter friend phone number: ', {defaultAnswer: "123456789", validator: phoneValidator});
+            const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ', {defaultAnswer: "0", validator: numberValidator});
+
+            const friend:iFriend = {
+                id: Date.now(),
+                email: email,
+                name: newName!,
+                phone: Number(newPhone!),
+                balance: Number(openingBalance),
+                isActive: true
+            }
+            
+            await friendsController.updateFriendInterface(email, friend)
         } else {
              console.log("Presentation: Email not valid.");
         }
     } else if(choice === "2") {
         const phone = await ask('Enter phone number to remove: ');
         if(phone && await friendsController.checkPhoneExists(phone)) {
-            await friendsController.updateFriendInterface(phone)
+            const newName = await ask('Enter friend name: ', {defaultAnswer: "need to keep same name"/**no change */});
+            const newEmail = await ask('Enter friend email: ', {defaultAnswer: "no change", validator: emailValidator});
+            const openingBalance = await ask('Enter opening balance (+ve: they owe you, -ve: you owe them): ', {defaultAnswer: "0", validator: numberValidator});
+
+            const friend:iFriend = {
+                id: Date.now(),
+                name: newName!,
+                email: newEmail!,
+                phone: Number(phone),
+                balance: Number(openingBalance),
+                isActive: true
+            }
+
+            await friendsController.updateFriendInterface(phone, friend)
         } else {
              console.log("Presentation: Phone number not valid.");
         }
@@ -144,7 +157,7 @@ export const manageFriends = async () => {
                 break;
             }
             case '3': {
-                const updateChoice = await choose("How do you want to remove: ", removeOrUpdateOptions, false);
+                const updateChoice = await choose("How do you want to update: ", removeOrUpdateOptions, false);
                 if(updateChoice?.value === "1" || updateChoice?.value ===  "2") {
                     await updateFriendInterface(updateChoice.value);
                 } else { console.log("Presentation: Invalid input") };

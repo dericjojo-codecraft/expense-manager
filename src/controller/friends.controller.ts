@@ -29,9 +29,9 @@ export class FriendsController{
         }
     }
 
-    async updateFriendInterface(value: string) {
+    async updateFriendInterface(value: string, friend: iFriend) {
         const repo = FriendRepository.getInstance();
-        //repo.updateFriend(value);
+        (await repo).updateFriend(value, friend);
     }
 
     async removeFriendReferenceToRepository(value: string) {

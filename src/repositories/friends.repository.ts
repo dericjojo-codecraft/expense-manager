@@ -86,13 +86,13 @@ export class FriendRepository {
 
     async updateFriend(value: string, friend: iFriend) {
         const [rows] = await this.currentData.execute<FriendRow[]>(
-            `SELECT id, isActive FROM friends WHERE email = ? OR phone = ?`,
+            `SELECT id, isActive FROM friends WHERE (email = ? OR phone = ?) AND isActive = 1` ,
             [value, value]
         );
 
         const existingFriend = rows[0];
 
-        if (existingFriend && existingFriend.isActive) {
+        if (existingFriend) {
             await this.currentData.execute(
                 `UPDATE friends SET name = ?, email = ?, phone = ?, balance = ? WHERE id = ?`, 
                 [friend.name, friend.email, friend.phone, friend.balance, existingFriend.id]
