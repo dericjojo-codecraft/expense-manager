@@ -157,10 +157,12 @@ export const manageFriends = async () => {
                 } else { console.log("Presentation: Invalid input") };
                 break;
             }
-            case '5':
+            case '5': {
                 console.log('Exiting...');
                 close();
+                await friendsController.closeDBConnection();
                 return;
+            }
         }
     }
 }

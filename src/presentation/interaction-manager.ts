@@ -1,5 +1,6 @@
 import * as readline from "node:readline";
 import { stdin as input, stdout as output } from "node:process";
+import { FriendsController } from "../controller/friends.controller.js";
 
 export interface AskOptions {
   defaultAnswer?: string | undefined;
@@ -47,6 +48,8 @@ export const openInteractionManager = () => {
 
   const close = () => {
     rl.close();
+    const controller = new FriendsController;
+    controller.closeDBConnection();
   };
 
   return { ask, choose, close };
